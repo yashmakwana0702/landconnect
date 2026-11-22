@@ -1,0 +1,38 @@
+# Local stack: PostgreSQL + API (+ optional self-hosted LiveKit via `--profile livekit`).
+# For calls on real phones, LiveKit Cloud (free tier) is the simplest option: put its
+# URL/key/secret in backend/.env and skip the livekit profile.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: landconnect
+      POSTGRES_PASSWORD: landconnect
+      POSTGRES_DB: landconnect
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U landconnect"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://landconnect:landconnect@db:5432/landconnect
+      UPLOAD_DIR: /data/uploads
+    ports: ["8000:8000"]
+    volumes: [uploads:/data/uploads]
+    depends_on:
+      db: { condition: service_healthy }
+
+  livekit:
+    profiles: ["livekit"]
+    image: livekit/livekit-server:latest
+    # --dev uses API key "devkey" / secret "secret". Set --node-ip to your LAN IP for phones.
+    command: --dev --bind 0.0.0.0 --node-ip ${LAN_IP:-127.0.0.1}
+    ports: ["7880:7880", "7881:7881", "7882:7882/udp"]
+
+volumes:
+  pgdata:
+  uploads:

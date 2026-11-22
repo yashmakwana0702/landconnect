@@ -1,0 +1,20 @@
+# Secrets / local config
+.env
+backend/.env
+mobile/.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+backend/uploads/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build output
+*.apk
+*.aab
