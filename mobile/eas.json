@@ -9,7 +9,7 @@
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-BACKEND-URL" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://demo.warlord0702.xyz" }
     }
   }
 }

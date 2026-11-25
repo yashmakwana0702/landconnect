@@ -111,7 +111,7 @@ class LocalLLMExtractor:
         payload = {
             "model": self._model,
             "temperature": 0,
-            "max_tokens": 400,
+            "max_tokens": 1000,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": query},
@@ -127,10 +127,22 @@ class LocalLLMExtractor:
                 resp = await client.post(self._url, json=payload)
                 resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
-            return BuyerRequirements.model_validate_json(content), "llm"
+            req = BuyerRequirements.model_validate_json(content)
+            return await self._repair(query, req), "llm"
         except Exception:  # noqa: BLE001 - matching must still work without the LLM
             logger.warning("Local LLM requirement extraction failed; using rules", exc_info=True)
             return await self._fallback.extract(query)
+
+
+    async def _repair(self, query: str, req: BuyerRequirements) -> BuyerRequirements:
+        """Fix common small-model errors: missing numbers and invented must-haves."""
+        rules, _ = await RuleExtractor().extract(query)
+        for field in ("budget_min_inr", "budget_max_inr", "area_min_acres", "area_max_acres"):
+            if getattr(req, field) is None:
+                setattr(req, field, getattr(rules, field))
+        text = query.lower()
+        req.must_haves = [m for m in req.must_haves if any(w in text for w in m.lower().split())]
+        return req
 
 
 class ClaudeExtractor:

@@ -23,6 +23,14 @@ async def test_local_llm_parses_json(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_local_llm_repairs_budget_and_must_haves(monkeypatch: pytest.MonkeyPatch) -> None:
+    content = '{"locations": ["Hosur"], "must_haves": ["road access", "clear title"]}'
+    _patch_transport(monkeypatch, lambda req: httpx.Response(200, json={"choices": [{"message": {"content": content}}]}))
+    req, _ = await ext.LocalLLMExtractor("http://llm/v1", "m").extract("5 acres near Hosur under 2 crore with road access")
+    assert req.budget_max_inr == 20_000_000 and req.must_haves == ["road access"]
+
+
+@pytest.mark.asyncio
 async def test_local_llm_falls_back_to_rules(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_transport(monkeypatch, lambda req: httpx.Response(500))
     _, source = await ext.LocalLLMExtractor("http://llm/v1", "m").extract("under 2 crore")
