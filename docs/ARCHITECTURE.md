@@ -15,7 +15,7 @@ flowchart LR
     FA[Routers] --> SV[Services<br/>auth · listings · chat · calls · matching]
     SV --> PG[(PostgreSQL)]
     SV --> FS[/uploads/]
-    SV -. "optional" .-> CL[Claude API]
+    SV -. "optional" .-> CL[Local LLM via llama-swap<br/>or Claude API]
   end
   SV -- "signs room tokens<br/>(API key/secret)" --> LK
   LK <-- "WebRTC media (SRTP)" --> LKC[LiveKit Cloud SFU]
@@ -107,7 +107,7 @@ Enforcement is server-side (`require_roles` dependency plus ownership checks). T
 
 `POST /match {query}` runs in two stages:
 
-1. **Understand.** `ClaudeExtractor` asks Claude, via structured outputs with the Pydantic `BuyerRequirements` schema as the response format, to turn free text into budget, area range, locations and must-haves. It handles lakh/crore, guntas and phrasing like "under". If no API key is set or the call fails, the deterministic `RuleExtractor` (regexes for "2.5 cr", "5-10 acres", known localities, feature keywords) takes over. The API response says which parser ran.
+1. **Understand.** Three interchangeable extractors implement one `RequirementExtractor` protocol, chosen by config: `LocalLLMExtractor` (when `LLM_BASE_URL` is set; a self-hosted Qwen2.5-7B behind llama-swap's OpenAI-compatible API, using JSON-schema output from the same Pydantic model), else `ClaudeExtractor` (when `ANTHROPIC_API_KEY` is set), else `RuleExtractor`. The demo runs the local model: it keeps buyer text on our own server and costs nothing per request. A 7B model makes mistakes (it can omit the budget or invent must-haves), so its output is repaired: missing budget/area values are filled from the rule parser and must-haves unrelated to the query are dropped. Any error or invalid output falls back to rules. `ClaudeExtractor` asks Claude, via structured outputs with the Pydantic `BuyerRequirements` schema as the response format, to turn free text into budget, area range, locations and must-haves. It handles lakh/crore, guntas and phrasing like "under". If no API key is set or the call fails, the deterministic `RuleExtractor` (regexes for "2.5 cr", "5-10 acres", known localities, feature keywords) takes over. The API response says which parser ran.
 2. **Rank.** `scorer.py` scores price (35), area (30), location (25) and features (10), using only the dimensions the buyer specified, normalized to 0–100. Location uses exact locality matches or the haversine distance to a small gazetteer of Bengaluru-region towns, so "near Hoskote" also surfaces a parcel in Malur 17 km away. Every score comes with human-readable reasons.
 
 The LLM is used only for language understanding. Ranking is deterministic and explainable, which matters for a high-value purchase.

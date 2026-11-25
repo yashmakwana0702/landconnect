@@ -8,7 +8,9 @@ A WhatsApp-style mobile app where buyers, sellers and brokers find land, chat, a
 | Backend | FastAPI (async), SQLAlchemy 2 + PostgreSQL, Alembic, JWT auth |
 | Calls | LiveKit (managed WebRTC SFU) for media; FastAPI WebSocket for ringing/accept/reject/end |
 | Maps | Leaflet + OpenStreetMap/CARTO tiles in a WebView (no Google Maps key needed) |
-| AI extra | Free-text buyer requirement → structured filters (Claude, with rule-based fallback) → ranked parcels with reasons |
+| AI extra | Free-text buyer requirement → structured filters (self-hosted Qwen2.5-7B via llama-swap, or Claude; rule-based fallback) → ranked parcels with reasons |
+
+**Live demo:** API at https://demo.warlord0702.xyz (interactive docs at `/docs`). Install the APK, then sign in with a demo account: `buyer@demo.in`, `seller@demo.in` or `broker@demo.in`, password `demo1234`.
 
 Docs: [Architecture and decisions](docs/ARCHITECTURE.md) · [AI tools usage](docs/AI_USAGE.md) · [Demo video script](docs/DEMO_SCRIPT.md)
 
@@ -53,7 +55,7 @@ cd backend
 alembic upgrade head
 python -m scripts.seed
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-pytest -q          # 23 tests, SQLite, no network
+pytest -q          # 26 tests, SQLite, no network
 ```
 </details>
 
@@ -97,6 +99,8 @@ The APK talks to the API URL baked in at build time, and to the LiveKit URL the 
 
 - **LiveKit**: use LiveKit Cloud. It provides TURN and TLS, so calls work across mobile networks.
 - **API**: deploy `backend/` (it has a Dockerfile that honours `$PORT` and runs migrations) to Render, Railway or Fly with a managed Postgres. Set the same env vars as `.env.example`.
+- **How the live demo is hosted**: the same `docker-compose.yml` (API + Postgres) runs on a home server behind nginx and a Cloudflare tunnel at `demo.warlord0702.xyz`, with LiveKit Cloud for media.
+- **AI matching model**: set `LLM_BASE_URL` (OpenAI-compatible, e.g. llama-swap `.../v1`) and `LLM_MODEL` to use a self-hosted model; otherwise set `ANTHROPIC_API_KEY` for Claude. With neither, the rule-based parser is used. Priority: local LLM, then Claude, then rules.
 - **Quick alternative for a live demo**: `cloudflared tunnel --url http://localhost:8000` gives an HTTPS URL to put in `eas.json`.
 
 ## Project layout

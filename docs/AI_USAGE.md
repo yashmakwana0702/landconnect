@@ -6,6 +6,7 @@
 |---|---|
 | **Claude Code** (Anthropic CLI agent, Claude Opus 5.5 model) | Main pair-programmer: planning, scaffolding, writing backend and mobile code, tests, debugging, docs |
 | **Context7 docs lookup + Expo `llms.txt`** (through Claude Code) | Checking current APIs for Expo SDK 58, Expo Router, image picker, location, EAS and the LiveKit React Native SDK, instead of relying on model memory |
+| **Self-hosted Qwen2.5-7B via llama-swap** (inside the product) | Default in the live demo: same requirement-to-filters job as below, over an OpenAI-compatible API (`LocalLLMExtractor`), with output repair and rule-based fallback |
 | **Claude API** (inside the product) | Optional: turns a buyer's free-text requirement into structured search filters (`backend/app/services/matching/extractor.py`) |
 
 ## How the work was split
