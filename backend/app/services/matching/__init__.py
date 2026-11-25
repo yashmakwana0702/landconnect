@@ -9,7 +9,12 @@ from app.config import get_settings
 from app.models import Listing, ListingStatus, User
 from app.schemas import MatchRequest, MatchResponse, MatchResult
 from app.services import listing_service
-from app.services.matching.extractor import ClaudeExtractor, RequirementExtractor, RuleExtractor
+from app.services.matching.extractor import (
+    ClaudeExtractor,
+    LocalLLMExtractor,
+    RequirementExtractor,
+    RuleExtractor,
+)
 from app.services.matching.scorer import score
 
 CANDIDATE_LIMIT: int = 500
@@ -18,8 +23,10 @@ MIN_SCORE: float = 20.0
 
 @lru_cache
 def get_extractor() -> RequirementExtractor:
-    """Claude when an API key is configured, rules otherwise (FastAPI dependency)."""
+    """Local LLM, else Claude if a key is set, else rules (FastAPI dependency)."""
     settings = get_settings()
+    if settings.llm_base_url:
+        return LocalLLMExtractor(settings.llm_base_url, settings.llm_model)
     if settings.anthropic_api_key:
         return ClaudeExtractor(settings.anthropic_api_key, settings.anthropic_model)
     return RuleExtractor()

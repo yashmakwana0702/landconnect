@@ -24,6 +24,9 @@ class Settings(BaseSettings):
         call_ring_timeout_s: Seconds before an unanswered call becomes "missed".
         anthropic_api_key: Optional; enables LLM parsing in buyer matching.
         anthropic_model: Claude model used for requirement extraction.
+        llm_base_url: Optional OpenAI-compatible base URL (e.g. llama-swap, ending in
+            /v1). When set it takes priority over Anthropic.
+        llm_model: Model id served at `llm_base_url`.
         cors_origins: Comma-separated list of allowed origins.
     """
 
@@ -40,6 +43,8 @@ class Settings(BaseSettings):
     call_ring_timeout_s: int = 35
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-5-5"
+    llm_base_url: str | None = None
+    llm_model: str = "qwen2.5-7b"
     cors_origins: str = "*"
 
 

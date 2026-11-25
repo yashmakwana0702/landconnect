@@ -9,6 +9,7 @@ import logging
 import re
 from typing import Literal, Protocol
 
+import httpx
 from anthropic import AsyncAnthropic
 
 from app.schemas import BuyerRequirements
@@ -95,6 +96,41 @@ class RuleExtractor:
         req.locations = [name.title() for name in LOCALITIES if name in text]
         req.must_haves = [kw for kw in FEATURE_KEYWORDS if kw in text]
         return req, "rules"
+
+
+class LocalLLMExtractor:
+    """LLM parser for an OpenAI-compatible server (llama-swap), falling back to rules."""
+
+    def __init__(self, base_url: str, model: str, fallback: RequirementExtractor | None = None) -> None:
+        self._url = f"{base_url.rstrip('/')}/chat/completions"
+        self._model = model
+        self._fallback = fallback or RuleExtractor()
+
+    async def extract(self, query: str) -> tuple[BuyerRequirements, Source]:
+        """Ask the local model for JSON matching `BuyerRequirements`; degrade gracefully."""
+        payload = {
+            "model": self._model,
+            "temperature": 0,
+            "max_tokens": 400,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": query},
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "BuyerRequirements", "schema": BuyerRequirements.model_json_schema()},
+            },
+        }
+        try:
+            # Generous timeout: llama-swap may need to load the model on first call.
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post(self._url, json=payload)
+                resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+            return BuyerRequirements.model_validate_json(content), "llm"
+        except Exception:  # noqa: BLE001 - matching must still work without the LLM
+            logger.warning("Local LLM requirement extraction failed; using rules", exc_info=True)
+            return await self._fallback.extract(query)
 
 
 class ClaudeExtractor:

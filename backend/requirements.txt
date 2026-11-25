@@ -12,3 +12,4 @@ bcrypt==5.0.0
 python-multipart==0.0.34
 livekit-api==2.0.1
 anthropic==2.12.0
+httpx==0.28.1
